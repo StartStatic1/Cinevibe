@@ -1,9 +1,8 @@
 // ============================================================
-//  CineVibe – Player (FIXED v3)
-//  - Botão fechar 44x44px (touch-friendly)
-//  - Back button fecha player
-//  - Fullscreen + orientation lock ao abrir
-//  - Scroll lock robusto
+//  CineVibe – Player (FIXED v4)
+//  - NÃO rotaciona ao trocar servidor (só na primeira abertura)
+//  - Iframe ocupa 100% da tela, sem scroll
+//  - Botão fechar 44x44px
 // ============================================================
 
 const Player = (() => {
@@ -49,6 +48,7 @@ const Player = (() => {
     overview: '',
     backdrop: null,
   };
+  let _firstOpen = true;  // controla se é primeira abertura
 
   async function open(tmdbId, type, title, backdrop, overview) {
     _state.id       = tmdbId;
@@ -76,14 +76,16 @@ const Player = (() => {
 
     _render();
 
-    // Fullscreen + orientation lock
-    try {
-      const overlay = document.getElementById('playerOverlay');
-      if (overlay?.requestFullscreen) await overlay.requestFullscreen();
-      if (screen.orientation?.lock) await screen.orientation.lock('landscape');
-    } catch(e) { /* ignore */ }
+    // Fullscreen + orientation lock APENAS na primeira abertura
+    if (_firstOpen) {
+      _firstOpen = false;
+      try {
+        const overlay = document.getElementById('playerOverlay');
+        if (overlay?.requestFullscreen) await overlay.requestFullscreen();
+        if (screen.orientation?.lock) await screen.orientation.lock('landscape');
+      } catch(e) { /* ignore */ }
+    }
 
-    // Push state para back button
     window.CineVibeBackBtn?.push('player');
   }
 
@@ -112,7 +114,8 @@ const Player = (() => {
           frameborder="0"
           allowfullscreen
           allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; clipboard-write *; accelerometer *; gyroscope *"
-          loading="lazy"
+          loading="eager"
+          scrolling="no"
         ></iframe>
       </div>
 
@@ -179,6 +182,7 @@ const Player = (() => {
         _updateIframe();
         bottom.querySelectorAll('.server-chip').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        // NÃO chama fullscreen/orientation aqui!
       });
     });
 
@@ -218,12 +222,12 @@ const Player = (() => {
   }
 
   async function close() {
-    // Sai do fullscreen
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       if (screen.orientation?.unlock) screen.orientation.unlock();
     } catch(e) { /* ignore */ }
 
+    _firstOpen = true;  // reseta para próxima abertura
     document.getElementById('playerOverlay')?.remove();
     document.body.style.overflow = '';
     window.CineVibeBackBtn?.clear('player');

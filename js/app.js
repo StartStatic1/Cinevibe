@@ -1,51 +1,47 @@
 // ============================================================
-//  CineVibe – App Bootstrap (FIXED v3)
-//  - Back button fecha modal/player
-//  - Search com AbortController (sem race condition)
-//  - Scroll lock robusto no modal/player
+//  CineVibe – App Bootstrap (FIXED v5)
+//  - Search: clique em cards funciona 100%
+//  - Back button: fecha search, modal, player
+//  - Cards de busca usam grid 2-col corretamente
 // ============================================================
 
 window.Pages = window.Pages || {};
 
-// ---- Back button manager (modal / player) ----
 const BackBtn = {
-  _modalOpen: false,
-  _playerOpen: false,
+  _stack: [],
   push(type) {
-    if (type === 'modal') this._modalOpen = true;
-    if (type === 'player') this._playerOpen = true;
+    this._stack.push(type);
     history.pushState({ cvOverlay: type }, '', window.location.href);
   },
   pop() {
-    if (this._playerOpen) {
-      this._playerOpen = false;
-      Player.close();
-      return true;
-    }
-    if (this._modalOpen) {
-      this._modalOpen = false;
-      Pages.Detail.close();
-      return true;
+    const type = this._stack.pop();
+    if (type === 'player') { Player.close(); return true; }
+    if (type === 'modal') { Pages.Detail.close(); return true; }
+    if (type === 'search') {
+      const so = document.getElementById('searchOverlay');
+      if (so && !so.classList.contains('hidden')) {
+        so.classList.add('hidden');
+        document.body.style.overflow = '';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('searchResults').innerHTML = '';
+        return true;
+      }
     }
     return false;
   },
   clear(type) {
-    if (type === 'modal') this._modalOpen = false;
-    if (type === 'player') this._playerOpen = false;
+    const idx = this._stack.lastIndexOf(type);
+    if (idx >= 0) this._stack.splice(idx, 1);
   }
 };
 
 window.addEventListener('popstate', (e) => {
-  if (e.state?.cvOverlay) {
-    BackBtn.pop();
-  }
+  if (e.state?.cvOverlay) BackBtn.pop();
 });
 
-// Expose para detail.js e player.js usarem
 window.CineVibeBackBtn = BackBtn;
 
 (async function init() {
-  // ---- Register routes ----
   Router.register('home',       Pages.Home);
   Router.register('movies',     Pages.Movies);
   Router.register('series',     Pages.Series);
@@ -57,7 +53,6 @@ window.CineVibeBackBtn = BackBtn;
 
   Router.init();
 
-  // ---- Splash → App ----
   setTimeout(() => {
     document.getElementById('splash').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -98,7 +93,7 @@ window.CineVibeBackBtn = BackBtn;
   // ---- Top bar nav ----
   document.getElementById('favBtn').addEventListener('click', () => Router.navigate('favorites'));
 
-  // ---- Search (FIXED: sem {once:true}, com AbortController) ----
+  // ---- Search (FIXED v5) ----
   const searchToggle  = document.getElementById('searchToggle');
   const searchOverlay = document.getElementById('searchOverlay');
   const searchInput   = document.getElementById('searchInput');
@@ -111,6 +106,7 @@ window.CineVibeBackBtn = BackBtn;
   searchToggle.addEventListener('click', () => {
     searchOverlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    BackBtn.push('search');
     setTimeout(() => searchInput.focus(), 100);
   });
 
@@ -119,6 +115,7 @@ window.CineVibeBackBtn = BackBtn;
     document.body.style.overflow = '';
     searchInput.value = '';
     searchResults.innerHTML = '';
+    BackBtn.clear('search');
     if (searchAbort) { searchAbort.abort(); searchAbort = null; }
   });
 
@@ -152,14 +149,17 @@ window.CineVibeBackBtn = BackBtn;
           card.addEventListener('click', () => {
             searchOverlay.classList.add('hidden');
             document.body.style.overflow = '';
+            BackBtn.clear('search');
             Pages.Detail.openPerson(item.id);
           });
           searchResults.appendChild(card);
         } else {
           const card = UI.movieCard(item, type);
-          card.querySelector('.card').addEventListener('click', () => {
+          // FIX v5: clique no card abre detalhes e fecha search
+          card.addEventListener('click', () => {
             searchOverlay.classList.add('hidden');
             document.body.style.overflow = '';
+            BackBtn.clear('search');
           });
           searchResults.appendChild(card);
         }

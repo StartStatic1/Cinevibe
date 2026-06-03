@@ -1,9 +1,12 @@
 // ============================================================
-//  CineVibe – Service Worker (FIXED v2)
-//  - Cache limitado, limpa periodicamente
+//  CineVibe – Service Worker (FIXED v4)
+//  - CACHE_NAME com timestamp para forçar update
+//  - JS/CSS: network-first (sempre pega versão nova)
+//  - Imagens/icons: cache-first
+//  - API: network-only
 // ============================================================
 
-const CACHE_NAME = 'cinevibe-v1.0.1';
+const CACHE_NAME = 'cinevibe-v1.0.1-' + new Date().toISOString().slice(0,10);
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -13,6 +16,7 @@ const STATIC_ASSETS = [
   '/css/app.css',
   '/css/components.css',
   '/css/animations.css',
+  '/css/extra-fixes.css',
   '/js/config.js',
   '/js/api.js',
   '/js/store.js',
@@ -55,16 +59,37 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.method !== 'GET') return;
 
+  // API → network-only (nunca cache)
   if (
     url.hostname.includes('themoviedb.org') ||
     url.hostname.includes('watchmode.com') ||
     url.hostname.includes('anthropic.com') ||
     url.hostname.includes('tmdb.org')
   ) {
+    event.respondWith(fetch(event.request).catch(() =>
+      caches.match(event.request).then(c => c || new Response('{"error":"offline"}', { headers: { 'Content-Type': 'application/json' } }))
+    ));
+    return;
+  }
+
+  // JS e CSS → network-first (sempre pega versão nova!)
+  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/')) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
+  // HTML, manifest, root → network-first
+  if (
+    url.pathname === '/' ||
+    url.pathname === '/index.html' ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/sw.js'
+  ) {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
+  // Imagens e icons → cache-first
   event.respondWith(cacheFirst(event.request));
 });
 
@@ -85,11 +110,14 @@ async function cacheFirst(request) {
 
 async function networkFirst(request) {
   try {
-    return await fetch(request);
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
   } catch {
     const cached = await caches.match(request);
-    return cached || new Response('{"error":"offline"}', {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return cached || new Response('Offline', { status: 503 });
   }
 }
