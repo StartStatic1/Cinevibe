@@ -18,6 +18,7 @@ const STATIC_ASSETS = [
   '/js/store.js',
   '/js/router.js',
   '/js/ui.js',
+  '/js/player.js',
   '/js/app.js',
   '/js/sw-register.js',
   '/js/pages/home.js',
