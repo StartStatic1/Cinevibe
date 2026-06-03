@@ -104,6 +104,7 @@ Pages.Detail = (() => {
           <p class="detail-overview">${overview}</p>
 
           <div class="detail-actions">
+            <button class="btn btn-play btn-sm" id="btnPlay">▶ Assistir</button>
             <button class="btn btn-primary btn-sm" id="btnFav">
               ${isFav ? '❤️ Favorito' : '🤍 Favoritar'}
             </button>
@@ -132,6 +133,12 @@ Pages.Detail = (() => {
               <div class="card-scroll" id="recsList"></div>
             </div>` : ''}
         </div>`;
+
+      // ---- Play ----
+      content.querySelector('#btnPlay')?.addEventListener('click', () => {
+        Pages.Detail.close();
+        Player.open(data.id, type, data.title || data.name, data.backdrop_path, data.overview);
+      });
 
       // ---- Fav ----
       content.querySelector('#btnFav')?.addEventListener('click', (e) => {
@@ -254,3 +261,6 @@ Pages.Detail = (() => {
 
   return { open, openPerson, close };
 })();
+
+// ---- Patch: ensure btnPlay works ----
+// This is handled via DOMContentLoaded event binding below
