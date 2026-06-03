@@ -1,10 +1,3 @@
-// ============================================================
-//  CineVibe – Detail Modal (FIXED v3)
-//  - Back button fecha modal
-//  - Botões não ficam escondidos (z-index)
-//  - Scroll lock robusto
-// ============================================================
-
 Pages = window.Pages || {};
 Pages.Detail = (() => {
 
