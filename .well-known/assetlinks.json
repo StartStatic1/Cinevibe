@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.cinevibe_omega.twa",
+        "sha256_cert_fingerprints": ["7C:59:9D:BA:52:14:2A:B4:9D:45:CB:50:53:AA:E5:71:82:77:AF:BF:18:00:B1:DB:F3:1A:EB:B4:D7:13:4B:13"]
+      }
+    }]
