@@ -79,7 +79,8 @@
 }
 .card:hover { transform: translateY(-4px); }
 .card-poster {
-  width: 120px; height: 180px;
+  width: 120px;
+  aspect-ratio: 2/3;
   border-radius: var(--radius);
   background: var(--surface);
   overflow: hidden; position: relative;
@@ -166,15 +167,9 @@
 @media (min-width: 768px) { .card-grid { grid-template-columns: repeat(4, 1fr); max-width: 960px; margin: 0 auto; } }
 
 /* No grid: card ocupa a célula toda */
-.card-grid .card,
-.card-grid .card .card-poster,
-.card-grid .card .card-info {
-  width: 100%;
-}
-.card-grid .card { flex: none; }
+.card-grid .card { flex: none; width: 100%; }
 .card-grid .card .card-poster {
   width: 100%;
-  height: auto;
   aspect-ratio: 2/3;
 }
 .card-grid .card .card-info { width: 100%; }
