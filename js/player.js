@@ -1,12 +1,13 @@
 // ============================================================
-//  CineVibe – Player
-//  SuperFlix embed + seletor temporada/episódio
-//  Salva progresso "Continuar Assistindo" no localStorage
+//  CineVibe – Player (FIXED v3)
+//  - Botão fechar 44x44px (touch-friendly)
+//  - Back button fecha player
+//  - Fullscreen + orientation lock ao abrir
+//  - Scroll lock robusto
 // ============================================================
 
 const Player = (() => {
 
-  // ---- Servidores embed em ordem de preferência ----
   const SERVERS = [
     {
       key: 'superflix',
@@ -40,17 +41,15 @@ const Player = (() => {
     },
   ];
 
-  // ---- Estado atual do player ----
   let _state = {
     id: null, type: null, title: null,
     season: 1, episode: 1,
     server: 'superflix',
-    seasons: [],      // [{ season_number, episode_count, name }]
+    seasons: [],
     overview: '',
     backdrop: null,
   };
 
-  // ---- Abrir player ----
   async function open(tmdbId, type, title, backdrop, overview) {
     _state.id       = tmdbId;
     _state.type     = type;
@@ -58,13 +57,11 @@ const Player = (() => {
     _state.backdrop = backdrop;
     _state.overview = overview || '';
 
-    // Recupera progresso salvo
     const saved = _loadProgress(tmdbId, type);
     _state.season  = saved?.season  || 1;
     _state.episode = saved?.episode || 1;
     _state.server  = saved?.server  || 'superflix';
 
-    // Para séries: carrega temporadas
     if (type === 'tv') {
       _state.seasons = [];
       try {
@@ -78,10 +75,19 @@ const Player = (() => {
     }
 
     _render();
+
+    // Fullscreen + orientation lock
+    try {
+      const overlay = document.getElementById('playerOverlay');
+      if (overlay?.requestFullscreen) await overlay.requestFullscreen();
+      if (screen.orientation?.lock) await screen.orientation.lock('landscape');
+    } catch(e) { /* ignore */ }
+
+    // Push state para back button
+    window.CineVibeBackBtn?.push('player');
   }
 
   function _render() {
-    // Remove player anterior se existir
     document.getElementById('playerOverlay')?.remove();
 
     const overlay = document.createElement('div');
@@ -92,7 +98,7 @@ const Player = (() => {
 
     overlay.innerHTML = `
       <div class="player-topbar">
-        <button class="player-close-btn" id="playerClose">✕</button>
+        <button class="player-close-btn" id="playerClose" aria-label="Fechar">✕</button>
         <div class="player-title">${_state.title || 'Assistindo'}</div>
         <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-3);">
           ${_state.type === 'tv' ? `T${_state.season} E${_state.episode}` : ''}
@@ -117,7 +123,6 @@ const Player = (() => {
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
 
-    // Eventos
     document.getElementById('playerClose').addEventListener('click', close);
     _bindBottomEvents();
   }
@@ -131,12 +136,10 @@ const Player = (() => {
   function _buildBottomHTML() {
     let html = '';
 
-    // Sinopse
     if (_state.overview) {
       html += `<p class="player-info">${_state.overview.slice(0, 220)}${_state.overview.length > 220 ? '...' : ''}</p>`;
     }
 
-    // Servidor chips
     html += `<div style="margin-bottom:8px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);">SERVIDOR</div>
       <div class="server-chips">
         ${SERVERS.map(s => `
@@ -144,7 +147,6 @@ const Player = (() => {
             data-server="${s.key}">${s.label}</button>`).join('')}
       </div>`;
 
-    // Séries: temporadas + episódios
     if (_state.type === 'tv' && _state.seasons.length) {
       html += `<div style="margin-bottom:8px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);">TEMPORADA</div>
         <div class="season-chips">
@@ -170,7 +172,6 @@ const Player = (() => {
     const bottom = document.getElementById('playerBottom');
     if (!bottom) return;
 
-    // Server
     bottom.querySelectorAll('.server-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         _state.server = btn.dataset.server;
@@ -181,7 +182,6 @@ const Player = (() => {
       });
     });
 
-    // Season
     bottom.querySelectorAll('.season-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         _state.season  = parseInt(btn.dataset.season);
@@ -192,7 +192,6 @@ const Player = (() => {
       });
     });
 
-    // Episodes
     bottom.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-ep]');
       if (!btn) return;
@@ -201,8 +200,8 @@ const Player = (() => {
       _updateIframe();
       bottom.querySelectorAll('.ep-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      // Atualiza topbar
-      document.querySelector('.player-title + div').textContent = `T${_state.season} E${_state.episode}`;
+      const topInfo = document.querySelector('.player-title + div');
+      if (topInfo) topInfo.textContent = `T${_state.season} E${_state.episode}`;
     });
   }
 
@@ -218,12 +217,18 @@ const Player = (() => {
     _bindBottomEvents();
   }
 
-  function close() {
+  async function close() {
+    // Sai do fullscreen
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      if (screen.orientation?.unlock) screen.orientation.unlock();
+    } catch(e) { /* ignore */ }
+
     document.getElementById('playerOverlay')?.remove();
     document.body.style.overflow = '';
+    window.CineVibeBackBtn?.clear('player');
   }
 
-  // ---- Progresso ----
   function _saveProgress() {
     const key  = `cv_progress_${_state.type}_${_state.id}`;
     const data = {
@@ -241,11 +246,9 @@ const Player = (() => {
   }
 
   function _broadcastContinue() {
-    // Dispara evento para home page atualizar "Continuar assistindo"
     window.dispatchEvent(new CustomEvent('cv:progress', { detail: _state }));
   }
 
-  // ---- Pega todos os "Continuar assistindo" ----
   function getContinueWatching() {
     const items = [];
     for (let i = 0; i < localStorage.length; i++) {

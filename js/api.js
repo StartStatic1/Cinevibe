@@ -1,22 +1,40 @@
 // ============================================================
-//  CineVibe – API Layer
-//  All network requests to TMDB & Watchmode
+//  CineVibe – API Layer (FIXED v3)
+//  LRU cache limitado, timeout em requisições, error handling
 // ============================================================
 
 const API = (() => {
-  // ---- Internal cache ----
+  // ---- Internal LRU cache (max 100 entries) ----
   const _cache = new Map();
+  const MAX_CACHE = 100;
 
-  async function _get(url) {
+  function _setCache(url, data) {
+    if (_cache.size >= MAX_CACHE) {
+      const firstKey = _cache.keys().next().value;
+      _cache.delete(firstKey);
+    }
+    _cache.set(url, { data, ts: Date.now() });
+  }
+
+  async function _get(url, timeoutMs = 8000) {
     if (_cache.has(url)) {
       const { data, ts } = _cache.get(url);
       if (Date.now() - ts < CONFIG.CACHE_TTL) return data;
     }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
-    const data = await res.json();
-    _cache.set(url, { data, ts: Date.now() });
-    return data;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+      const data = await res.json();
+      _setCache(url, data);
+      return data;
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') throw new Error('Timeout na requisição');
+      throw e;
+    }
   }
 
   function tmdb(path, params = {}) {
@@ -29,7 +47,6 @@ const API = (() => {
   }
 
   function tmdbEn(path, params = {}) {
-    // English fallback for missing PT-BR data
     const p = new URLSearchParams({
       api_key: CONFIG.TMDB_KEY,
       language: 'en-US',
@@ -75,7 +92,6 @@ const API = (() => {
     detail: async (id) => {
       try {
         const data = await tmdb(`/movie/${id}`, { append_to_response: 'credits,videos,recommendations,similar,watch/providers,release_dates' });
-        // Fallback overview to English if PT-BR is empty
         if (!data.overview || data.overview.trim() === '') {
           const en = await tmdbEn(`/movie/${id}`);
           data.overview = en.overview;
@@ -128,7 +144,6 @@ const API = (() => {
       let data;
       try {
         data = await tmdb(`/person/${id}`, { append_to_response: 'movie_credits,tv_credits,images' });
-        // Watchmode enrichment for better bio
         if (!data.biography || data.biography.trim().length < 100) {
           const en = await tmdbEn(`/person/${id}`);
           if (en.biography && en.biography.length > data.biography.length) {
@@ -157,11 +172,8 @@ const API = (() => {
 
   // ---- Watchmode ----
   const Watchmode = {
-    // Get streaming sources for a title
-    // tmdbId: number, type: 'movie' or 'tv'
     sources: async (tmdbId, type = 'movie') => {
       try {
-        // First, get the watchmode ID
         const search = await watchmode('/search/', {
           search_field: 'tmdb_movie_id',
           search_value: tmdbId,
@@ -175,7 +187,6 @@ const API = (() => {
       }
     },
 
-    // Get streaming by provider for watchmode
     trending: async () => {
       try {
         return await watchmode('/list-titles/', { sort_by: 'popularity_desc', limit: 20 });

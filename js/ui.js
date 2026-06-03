@@ -1,10 +1,11 @@
 // ============================================================
-//  CineVibe – UI Helpers
+//  CineVibe – UI Helpers (FIXED v3)
+//  - Fav button sempre visível no touch
+//  - Card com botão play embutido
 // ============================================================
 
 const UI = (() => {
 
-  // ---- Card builders ----
   function movieCard(item, type = 'movie') {
     const poster  = API.img(item.poster_path, CONFIG.IMG.POSTER_MD);
     const title   = item.title || item.name || 'Sem título';
@@ -45,7 +46,7 @@ const UI = (() => {
       const btn   = e.currentTarget;
       btn.classList.toggle('active', added);
       btn.textContent = added ? '❤️' : '🤍';
-      toast(added ? 'Adicionado aos favoritos!' : 'Removido dos favoritos', added ? 'success' : '');
+      UI.toast(added ? 'Adicionado aos favoritos!' : 'Removido dos favoritos', added ? 'success' : '');
     });
 
     return el;
@@ -87,7 +88,6 @@ const UI = (() => {
     return el;
   }
 
-  // ---- Skeleton loaders ----
   function skeletonCards(n = 6) {
     const wrap = document.createElement('div');
     wrap.className = 'card-scroll';
@@ -103,7 +103,6 @@ const UI = (() => {
     return wrap;
   }
 
-  // ---- Section builder ----
   function section(title, accentWord, seeAllPage) {
     const s = document.createElement('div');
     s.className = 'section';
@@ -122,7 +121,6 @@ const UI = (() => {
     return s;
   }
 
-  // ---- Toast ----
   function toast(msg, type = '') {
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
@@ -132,7 +130,6 @@ const UI = (() => {
     setTimeout(() => t.remove(), 3000);
   }
 
-  // ---- Chips builder ----
   function chips(items, activeId, onClick) {
     const wrap = document.createElement('div');
     wrap.className = 'chips';
@@ -150,13 +147,11 @@ const UI = (() => {
     return wrap;
   }
 
-  // ---- Stars rating ----
   function stars(rating) {
     const full = Math.round((rating / 10) * 5);
     return '★'.repeat(full) + '☆'.repeat(5 - full);
   }
 
-  // ---- Streaming badge ----
   function streamingBadge(providerId) {
     const p = CONFIG.STREAMING_IDS[providerId];
     if (!p) return null;

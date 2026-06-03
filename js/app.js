@@ -1,9 +1,48 @@
 // ============================================================
-//  CineVibe – App Bootstrap
+//  CineVibe – App Bootstrap (FIXED v3)
+//  - Back button fecha modal/player
+//  - Search com AbortController (sem race condition)
+//  - Scroll lock robusto no modal/player
 // ============================================================
 
-// Init Pages namespace
 window.Pages = window.Pages || {};
+
+// ---- Back button manager (modal / player) ----
+const BackBtn = {
+  _modalOpen: false,
+  _playerOpen: false,
+  push(type) {
+    if (type === 'modal') this._modalOpen = true;
+    if (type === 'player') this._playerOpen = true;
+    history.pushState({ cvOverlay: type }, '', window.location.href);
+  },
+  pop() {
+    if (this._playerOpen) {
+      this._playerOpen = false;
+      Player.close();
+      return true;
+    }
+    if (this._modalOpen) {
+      this._modalOpen = false;
+      Pages.Detail.close();
+      return true;
+    }
+    return false;
+  },
+  clear(type) {
+    if (type === 'modal') this._modalOpen = false;
+    if (type === 'player') this._playerOpen = false;
+  }
+};
+
+window.addEventListener('popstate', (e) => {
+  if (e.state?.cvOverlay) {
+    BackBtn.pop();
+  }
+});
+
+// Expose para detail.js e player.js usarem
+window.CineVibeBackBtn = BackBtn;
 
 (async function init() {
   // ---- Register routes ----
@@ -22,8 +61,6 @@ window.Pages = window.Pages || {};
   setTimeout(() => {
     document.getElementById('splash').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-
-    // Determine initial page from hash
     const hash = window.location.hash.replace('#', '') || 'home';
     Router.navigate(hash);
   }, 1900);
@@ -61,7 +98,7 @@ window.Pages = window.Pages || {};
   // ---- Top bar nav ----
   document.getElementById('favBtn').addEventListener('click', () => Router.navigate('favorites'));
 
-  // ---- Search ----
+  // ---- Search (FIXED: sem {once:true}, com AbortController) ----
   const searchToggle  = document.getElementById('searchToggle');
   const searchOverlay = document.getElementById('searchOverlay');
   const searchInput   = document.getElementById('searchInput');
@@ -69,20 +106,25 @@ window.Pages = window.Pages || {};
   const searchResults = document.getElementById('searchResults');
 
   let searchTimer;
+  let searchAbort = null;
 
   searchToggle.addEventListener('click', () => {
     searchOverlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
     setTimeout(() => searchInput.focus(), 100);
   });
 
   searchClose.addEventListener('click', () => {
     searchOverlay.classList.add('hidden');
+    document.body.style.overflow = '';
     searchInput.value = '';
     searchResults.innerHTML = '';
+    if (searchAbort) { searchAbort.abort(); searchAbort = null; }
   });
 
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimer);
+    if (searchAbort) { searchAbort.abort(); searchAbort = null; }
     const q = searchInput.value.trim();
     if (!q) { searchResults.innerHTML = ''; return; }
     searchResults.innerHTML = '<div class="spinner" style="margin:20px auto;"></div>';
@@ -90,38 +132,49 @@ window.Pages = window.Pages || {};
   });
 
   async function doSearch(query) {
-    const data = await API.Search.multi(query);
-    searchResults.innerHTML = '';
-    const results = (data.results || []).filter(r =>
-      r.media_type !== 'person' || r.profile_path
-    ).slice(0, 20);
+    searchAbort = new AbortController();
+    try {
+      const data = await API.Search.multi(query);
+      searchResults.innerHTML = '';
+      const results = (data.results || []).filter(r =>
+        r.media_type !== 'person' || r.profile_path
+      ).slice(0, 20);
 
-    if (!results.length) {
-      searchResults.innerHTML = `<p style="color:var(--text-3);text-align:center;grid-column:1/-1;padding-top:20px;">Nenhum resultado encontrado</p>`;
-      return;
-    }
-
-    results.forEach(item => {
-      const type = item.media_type;
-      if (type === 'person') {
-        const card = UI.actorCard(item);
-        card.addEventListener('click', () => {
-          searchOverlay.classList.add('hidden');
-          Pages.Detail.openPerson(item.id);
-        });
-        searchResults.appendChild(card);
-      } else {
-        const card = UI.movieCard(item, type);
-        card.querySelector('.card').addEventListener('click', () => {
-          searchOverlay.classList.add('hidden');
-        }, { once: true });
-        searchResults.appendChild(card);
+      if (!results.length) {
+        searchResults.innerHTML = `<p style="color:var(--text-3);text-align:center;grid-column:1/-1;padding-top:20px;">Nenhum resultado encontrado</p>`;
+        return;
       }
-    });
+
+      results.forEach(item => {
+        const type = item.media_type;
+        if (type === 'person') {
+          const card = UI.actorCard(item);
+          card.addEventListener('click', () => {
+            searchOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+            Pages.Detail.openPerson(item.id);
+          });
+          searchResults.appendChild(card);
+        } else {
+          const card = UI.movieCard(item, type);
+          card.querySelector('.card').addEventListener('click', () => {
+            searchOverlay.classList.add('hidden');
+            document.body.style.overflow = '';
+          });
+          searchResults.appendChild(card);
+        }
+      });
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        searchResults.innerHTML = `<p style="color:var(--text-3);text-align:center;grid-column:1/-1;padding-top:20px;">Erro na busca</p>`;
+      }
+    }
   }
 
   // ---- Modal close ----
-  document.getElementById('modalClose').addEventListener('click', Pages.Detail.close);
+  document.getElementById('modalClose').addEventListener('click', () => {
+    Pages.Detail.close();
+  });
   document.getElementById('modalOverlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modalOverlay')) Pages.Detail.close();
   });
