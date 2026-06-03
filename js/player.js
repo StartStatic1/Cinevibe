@@ -1,0 +1,263 @@
+// ============================================================
+//  CineVibe – Player
+//  SuperFlix embed + seletor temporada/episódio
+//  Salva progresso "Continuar Assistindo" no localStorage
+// ============================================================
+
+const Player = (() => {
+
+  // ---- Servidores embed em ordem de preferência ----
+  const SERVERS = [
+    {
+      key: 'superflix',
+      label: 'SuperFlix',
+      movie: (id) => `https://superflixapi.fit/filme/${id}`,
+      tv:    (id, s, e) => `https://superflixapi.fit/serie/${id}/${s}/${e}`,
+    },
+    {
+      key: 'embedmovies',
+      label: 'EmbedMovies',
+      movie: (id) => `https://myembed.biz/filme/${id}`,
+      tv:    (id, s, e) => `https://myembed.biz/serie/${id}/${s}/${e}`,
+    },
+    {
+      key: 'betterflix',
+      label: 'BetterFlix',
+      movie: (id) => `https://betterflix.click/api/player?id=${id}&type=movie`,
+      tv:    (id, s, e) => `https://betterflix.click/api/player?id=${id}&type=tv&season=${s}&episode=${e}`,
+    },
+    {
+      key: 'megaembed',
+      label: 'MegaEmbed',
+      movie: (id) => `https://megaembedapi.site/embed/${id}`,
+      tv:    (id, s, e) => `https://megaembedapi.site/embed/${id}/${s}/${e}`,
+    },
+    {
+      key: 'embedplay',
+      label: 'EmbedPlay',
+      movie: (id) => `https://embedplayapi.top/embed/${id}`,
+      tv:    (id, s, e) => `https://embedplayapi.top/embed/${id}/${s}/${e}`,
+    },
+  ];
+
+  // ---- Estado atual do player ----
+  let _state = {
+    id: null, type: null, title: null,
+    season: 1, episode: 1,
+    server: 'superflix',
+    seasons: [],      // [{ season_number, episode_count, name }]
+    overview: '',
+    backdrop: null,
+  };
+
+  // ---- Abrir player ----
+  async function open(tmdbId, type, title, backdrop, overview) {
+    _state.id       = tmdbId;
+    _state.type     = type;
+    _state.title    = title;
+    _state.backdrop = backdrop;
+    _state.overview = overview || '';
+
+    // Recupera progresso salvo
+    const saved = _loadProgress(tmdbId, type);
+    _state.season  = saved?.season  || 1;
+    _state.episode = saved?.episode || 1;
+    _state.server  = saved?.server  || 'superflix';
+
+    // Para séries: carrega temporadas
+    if (type === 'tv') {
+      _state.seasons = [];
+      try {
+        const detail = await API.Series.detail(tmdbId);
+        _state.seasons = (detail.seasons || [])
+          .filter(s => s.season_number > 0)
+          .map(s => ({ number: s.season_number, count: s.episode_count, name: s.name }));
+      } catch(e) {
+        _state.seasons = [{ number: 1, count: 20, name: 'Temporada 1' }];
+      }
+    }
+
+    _render();
+  }
+
+  function _render() {
+    // Remove player anterior se existir
+    document.getElementById('playerOverlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'playerOverlay';
+    overlay.className = 'player-overlay';
+
+    const src = _buildSrc();
+
+    overlay.innerHTML = `
+      <div class="player-topbar">
+        <button class="player-close-btn" id="playerClose">✕</button>
+        <div class="player-title">${_state.title || 'Assistindo'}</div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--text-3);">
+          ${_state.type === 'tv' ? `T${_state.season} E${_state.episode}` : ''}
+        </div>
+      </div>
+
+      <div class="player-iframe-wrap" id="playerIframeWrap">
+        <iframe
+          id="playerIframe"
+          src="${src}"
+          frameborder="0"
+          allowfullscreen
+          allow="autoplay *; encrypted-media *; picture-in-picture *; fullscreen *; clipboard-write *; accelerometer *; gyroscope *"
+          loading="lazy"
+        ></iframe>
+      </div>
+
+      <div class="player-bottom" id="playerBottom">
+        ${_buildBottomHTML()}
+      </div>`;
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    // Eventos
+    document.getElementById('playerClose').addEventListener('click', close);
+    _bindBottomEvents();
+  }
+
+  function _buildSrc() {
+    const srv = SERVERS.find(s => s.key === _state.server) || SERVERS[0];
+    if (_state.type === 'movie') return srv.movie(_state.id);
+    return srv.tv(_state.id, _state.season, _state.episode);
+  }
+
+  function _buildBottomHTML() {
+    let html = '';
+
+    // Sinopse
+    if (_state.overview) {
+      html += `<p class="player-info">${_state.overview.slice(0, 220)}${_state.overview.length > 220 ? '...' : ''}</p>`;
+    }
+
+    // Servidor chips
+    html += `<div style="margin-bottom:8px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);">SERVIDOR</div>
+      <div class="server-chips">
+        ${SERVERS.map(s => `
+          <button class="server-chip ${s.key === _state.server ? 'active' : ''}"
+            data-server="${s.key}">${s.label}</button>`).join('')}
+      </div>`;
+
+    // Séries: temporadas + episódios
+    if (_state.type === 'tv' && _state.seasons.length) {
+      html += `<div style="margin-bottom:8px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);">TEMPORADA</div>
+        <div class="season-chips">
+          ${_state.seasons.map(s => `
+            <button class="season-chip ${s.number === _state.season ? 'active' : ''}"
+              data-season="${s.number}">T${s.number}</button>`).join('')}
+        </div>`;
+
+      const curSeason = _state.seasons.find(s => s.number === _state.season);
+      const epCount   = curSeason?.count || 12;
+      html += `<div style="margin-bottom:8px;font-size:11px;color:var(--text-3);font-family:var(--font-mono);">EPISÓDIO</div>
+        <div class="episodes-grid" id="episodesGrid">
+          ${Array.from({length: epCount}, (_,i) => i+1).map(ep => `
+            <button class="ep-btn ${ep === _state.episode ? 'active' : ''}"
+              data-ep="${ep}">Ep ${ep}</button>`).join('')}
+        </div>`;
+    }
+
+    return html;
+  }
+
+  function _bindBottomEvents() {
+    const bottom = document.getElementById('playerBottom');
+    if (!bottom) return;
+
+    // Server
+    bottom.querySelectorAll('.server-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _state.server = btn.dataset.server;
+        _saveProgress();
+        _updateIframe();
+        bottom.querySelectorAll('.server-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Season
+    bottom.querySelectorAll('.season-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _state.season  = parseInt(btn.dataset.season);
+        _state.episode = 1;
+        _saveProgress();
+        _refreshBottom();
+        _updateIframe();
+      });
+    });
+
+    // Episodes
+    bottom.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-ep]');
+      if (!btn) return;
+      _state.episode = parseInt(btn.dataset.ep);
+      _saveProgress();
+      _updateIframe();
+      bottom.querySelectorAll('.ep-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Atualiza topbar
+      document.querySelector('.player-title + div').textContent = `T${_state.season} E${_state.episode}`;
+    });
+  }
+
+  function _updateIframe() {
+    const iframe = document.getElementById('playerIframe');
+    if (iframe) iframe.src = _buildSrc();
+  }
+
+  function _refreshBottom() {
+    const bottom = document.getElementById('playerBottom');
+    if (!bottom) return;
+    bottom.innerHTML = _buildBottomHTML();
+    _bindBottomEvents();
+  }
+
+  function close() {
+    document.getElementById('playerOverlay')?.remove();
+    document.body.style.overflow = '';
+  }
+
+  // ---- Progresso ----
+  function _saveProgress() {
+    const key  = `cv_progress_${_state.type}_${_state.id}`;
+    const data = {
+      id: _state.id, type: _state.type, title: _state.title,
+      season: _state.season, episode: _state.episode,
+      server: _state.server, backdrop: _state.backdrop,
+      updatedAt: Date.now(),
+    };
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+    _broadcastContinue();
+  }
+
+  function _loadProgress(id, type) {
+    try { return JSON.parse(localStorage.getItem(`cv_progress_${type}_${id}`)); } catch { return null; }
+  }
+
+  function _broadcastContinue() {
+    // Dispara evento para home page atualizar "Continuar assistindo"
+    window.dispatchEvent(new CustomEvent('cv:progress', { detail: _state }));
+  }
+
+  // ---- Pega todos os "Continuar assistindo" ----
+  function getContinueWatching() {
+    const items = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k?.startsWith('cv_progress_')) continue;
+      try {
+        const d = JSON.parse(localStorage.getItem(k));
+        if (d) items.push(d);
+      } catch {}
+    }
+    return items.sort((a,b) => b.updatedAt - a.updatedAt).slice(0, 10);
+  }
+
+  return { open, close, getContinueWatching };
+})();
