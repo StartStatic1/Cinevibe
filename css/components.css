@@ -19,7 +19,7 @@
 /* ============ HERO BANNER ============ */
 .hero {
   position: relative; width: 100%;
-  height: 52vw; min-height: 220px; max-height: 340px;
+  height: 42vw; min-height: 180px; max-height: 280px;
   overflow: hidden; border-radius: var(--radius-lg);
   margin-bottom: 28px; cursor: pointer;
 }
@@ -65,21 +65,21 @@
   display: flex; gap: 12px;
   overflow-x: auto; padding-bottom: 10px;
   scrollbar-width: none;
-  /* CRÍTICO: não quebra linha */
   flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
 .card-scroll::-webkit-scrollbar { display: none; }
 
 /* ============ MOVIE CARD (portrait) — tamanho FIXO ============ */
 .card {
-  flex: 0 0 120px;   /* FIXO — não estica, não encolhe */
+  flex: 0 0 120px;
   width: 120px;
   cursor: pointer; transition: transform 0.2s;
   min-width: 0;
 }
 .card:hover { transform: translateY(-4px); }
 .card-poster {
-  width: 120px; height: 180px;   /* 2:3 fixo em px */
+  width: 120px; height: 180px;
   border-radius: var(--radius);
   background: var(--surface);
   overflow: hidden; position: relative;
@@ -103,14 +103,20 @@
   background: rgba(0,0,0,0.82); color: var(--gold);
   font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 5px;
   backdrop-filter: blur(4px);
+  z-index: 2;
 }
+/* Fav button: sempre visível no mobile, hover no desktop */
 .card-fav-btn {
   position: absolute; top: 6px; left: 6px;
-  width: 26px; height: 26px; background: rgba(0,0,0,0.75);
+  width: 28px; height: 28px; background: rgba(0,0,0,0.75);
   border-radius: 7px; display: flex; align-items: center; justify-content: center;
-  font-size: 13px; opacity: 0; transition: opacity 0.2s;
+  font-size: 13px; opacity: 1; transition: opacity 0.2s;
+  z-index: 2; border: none;
 }
-.card:hover .card-fav-btn, .card-fav-btn.active { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .card-fav-btn { opacity: 0; }
+  .card:hover .card-fav-btn, .card-fav-btn.active { opacity: 1; }
+}
 .card-fav-btn.active { color: #ff4d6d; }
 .card-info { padding: 7px 0 0; width: 120px; }
 .card-title {
@@ -119,11 +125,27 @@
 }
 .card-year { font-size: 10px; color: var(--text-3); margin-top: 1px; }
 
+/* Play button no card — sempre visível (mobile first) */
+.card-play-btn {
+  position: absolute; bottom: 6px; right: 6px;
+  width: 30px; height: 30px;
+  background: rgba(0,0,0,0.75);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px;
+  border: 2px solid rgba(255,255,255,0.25);
+  z-index: 3; opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-play-btn { opacity: 0.5; transition: opacity 0.2s; }
+  .card:hover .card-play-btn { opacity: 1; }
+}
+
 /* ============ CARD WIDE (landscape) ============ */
 .card-wide { flex: 0 0 200px; width: 200px; cursor: pointer; transition: transform 0.2s; }
 .card-wide:hover { transform: translateY(-4px); }
 .card-wide-thumb {
-  width: 200px; height: 113px;   /* 16:9 fixo */
+  width: 200px; height: 113px;
   border-radius: var(--radius);
   background: var(--surface); overflow: hidden;
   position: relative; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
@@ -141,6 +163,7 @@
   gap: 12px;
 }
 @media (min-width: 480px) { .card-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 768px) { .card-grid { grid-template-columns: repeat(4, 1fr); max-width: 960px; margin: 0 auto; } }
 
 /* No grid: card ocupa a célula toda */
 .card-grid .card,
@@ -152,27 +175,34 @@
 .card-grid .card .card-poster {
   width: 100%;
   height: auto;
-  aspect-ratio: 2/3;   /* mantém proporção sem altura fixa */
+  aspect-ratio: 2/3;
 }
 .card-grid .card .card-info { width: 100%; }
 
 /* ============ CHIPS FILTRO (scroll horizontal) ============ */
 .chips {
-  display: flex; gap: 8px;
+  display: flex;
+  flex-flow: row nowrap !important;
   overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  gap: 8px;
   padding-bottom: 6px; padding-top: 2px;
   margin-bottom: 14px;
   scrollbar-width: none;
-  flex-wrap: nowrap !important;   /* NUNCA quebra */
-  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
 }
 .chips::-webkit-scrollbar { display: none; }
+.chips > * {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
 .chip {
-  flex: 0 0 auto;   /* não estica, não encolhe */
   padding: 7px 15px; border-radius: 99px;
   background: var(--surface); border: 1px solid var(--border);
   color: var(--text-2); font-size: 13px; cursor: pointer;
-  transition: all 0.2s; white-space: nowrap;
+  transition: all 0.2s;
 }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
@@ -183,8 +213,10 @@
   display: flex; gap: 8px;
   overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px;
   scrollbar-width: none; flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
 .chips-scroll::-webkit-scrollbar { display: none; }
+.chips-scroll > * { flex-shrink: 0; }
 
 /* ============ STREAMING BADGES ============ */
 .streaming-list { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -243,7 +275,7 @@
 .mood-btn .desc { font-size: 10px; color: var(--text-3); margin-top: 2px; }
 
 /* ============ ACTOR CARD ============ */
-.actor-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; flex-wrap: nowrap; }
+.actor-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
 .actor-list::-webkit-scrollbar { display: none; }
 .actor-card { flex: 0 0 72px; text-align: center; cursor: pointer; }
 .actor-avatar {
@@ -282,8 +314,9 @@
 .detail-backdrop-grad {
   position: absolute; inset: 0;
   background: linear-gradient(to top, var(--bg-2) 5%, rgba(8,8,16,0.3) 60%, transparent 100%);
+  z-index: 1;
 }
-.detail-body { padding: 0 18px 40px; }
+.detail-body { padding: 0 18px 40px; position: relative; z-index: 2; }
 .detail-title {
   font-family: var(--font-display); font-size: 26px; letter-spacing: 1px;
   color: var(--text); margin-bottom: 10px;
@@ -296,7 +329,10 @@
   background: var(--surface); padding: 3px 9px; border-radius: 99px; white-space: nowrap;
 }
 .detail-overview { font-size: 13px; color: var(--text-2); line-height: 1.75; margin-bottom: 18px; }
-.detail-actions { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.detail-actions {
+  display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  position: relative; z-index: 5;
+}
 .detail-section-title {
   font-family: var(--font-display); font-size: 16px; color: var(--text);
   margin-bottom: 12px; letter-spacing: 0.5px; text-transform: uppercase;
@@ -308,6 +344,7 @@
   background: #000;
   z-index: 400;
   display: flex; flex-direction: column;
+  touch-action: none;
 }
 .player-topbar {
   display: flex; align-items: center; gap: 12px;
@@ -318,9 +355,10 @@
 }
 .player-title { flex: 1; font-family: var(--font-display); font-size: 18px; color: var(--text); letter-spacing: 1px; }
 .player-close-btn {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,0.1); color: var(--text);
-  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); color: var(--text);
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  border: none;
 }
 .player-iframe-wrap {
   flex: 1; position: relative; background: #000;
@@ -333,6 +371,7 @@
   background: var(--bg-2); border-top: 1px solid var(--border);
   padding: 12px 16px; flex-shrink: 0;
   max-height: 40vh; overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .player-info { font-size: 13px; color: var(--text-2); margin-bottom: 10px; line-height: 1.6; }
 .episodes-grid {
@@ -346,7 +385,7 @@
 }
 .ep-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 .ep-btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
-.season-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; flex-wrap: nowrap; scrollbar-width: none; }
+.season-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .season-chips::-webkit-scrollbar { display: none; }
 .season-chip {
   flex: 0 0 auto; padding: 5px 14px; border-radius: 99px;
@@ -386,3 +425,8 @@
 .continue-info { padding: 6px 0; }
 .continue-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .continue-sub { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+
+/* Touch devices: show continue play icon always at 0.6 opacity */
+@media (hover: none) and (pointer: coarse) {
+  .continue-play-icon { opacity: 0.6; }
+}
