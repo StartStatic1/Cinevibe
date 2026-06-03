@@ -1,5 +1,5 @@
 // ============================================================
-//  CineVibe – Favorites Page
+//  CineVibe – Favorites Page (FIXED v2)
 // ============================================================
 
 Pages.Favorites = function(container) {
@@ -31,7 +31,8 @@ Pages.Favorites = function(container) {
 };
 
 // ============================================================
-//  CineVibe – Watchlist Page
+//  CineVibe – Watchlist Page (FIXED v2)
+//  - Botão "Visto" sempre visível no mobile
 // ============================================================
 
 Pages.Watchlist = function(container) {
@@ -58,14 +59,10 @@ Pages.Watchlist = function(container) {
   list.forEach(item => {
     const card = UI.movieCard(item, item.type);
 
-    // Add "Marcar como visto" overlay
     const poster = card.querySelector('.card-poster');
     const seenBtn = document.createElement('button');
-    seenBtn.style.cssText = `
-      position:absolute;bottom:6px;left:6px;right:6px;
-      background:rgba(0,229,200,0.9);color:#000;
-      font-size:10px;font-weight:700;padding:4px 8px;
-      border-radius:6px;display:none;`;
+    seenBtn.className = 'card-seen-btn';
+    seenBtn.setAttribute('aria-label', 'Marcar como visto');
     seenBtn.textContent = '✓ Visto';
     seenBtn.onclick = (e) => {
       e.stopPropagation();
@@ -75,8 +72,6 @@ Pages.Watchlist = function(container) {
       UI.toast('Marcado como visto! ✅', 'success');
     };
     poster.appendChild(seenBtn);
-    card.addEventListener('mouseenter', () => seenBtn.style.display = 'block');
-    card.addEventListener('mouseleave', () => seenBtn.style.display = 'none');
 
     grid.appendChild(card);
   });

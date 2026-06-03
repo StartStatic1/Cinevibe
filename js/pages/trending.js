@@ -1,5 +1,5 @@
 // ============================================================
-//  CineVibe – Trending Page
+//  CineVibe – Trending Page (FIXED v2)
 // ============================================================
 
 Pages.Trending = async function(container) {
@@ -12,7 +12,6 @@ Pages.Trending = async function(container) {
   page.innerHTML = `
     <h1 class="section-title" style="margin-bottom:16px">🔥 <span class="accent">Em Alta</span></h1>`;
 
-  // Time filter
   const timeChips = UI.chips(
     [{ id: 'day', name: 'Hoje' }, { id: 'week', name: 'Esta semana' }],
     'week',
@@ -20,7 +19,6 @@ Pages.Trending = async function(container) {
   );
   page.appendChild(timeChips);
 
-  // Type filter
   const typeChips = UI.chips(
     [{ id: 'movie', name: 'Filmes' }, { id: 'tv', name: 'Séries' }],
     'movie',
@@ -34,17 +32,20 @@ Pages.Trending = async function(container) {
 
   async function load() {
     grid.innerHTML = '<div class="spinner"></div>';
-    const data = mediaType === 'movie'
-      ? await API.Movies.trending(timeWindow)
-      : await API.Series.trending(timeWindow);
-    grid.innerHTML = '';
-    data.results?.forEach((item, i) => {
-      const card = UI.movieCard(item, mediaType === 'tv' ? 'tv' : 'movie');
-      // Add rank badge overlay
-      const badge = card.querySelector('.card-badge');
-      if (badge && i < 10) badge.textContent = `#${i+1}`;
-      grid.appendChild(card);
-    });
+    try {
+      const data = mediaType === 'movie'
+        ? await API.Movies.trending(timeWindow)
+        : await API.Series.trending(timeWindow);
+      grid.innerHTML = '';
+      data.results?.forEach((item, i) => {
+        const card = UI.movieCard(item, mediaType === 'tv' ? 'tv' : 'movie');
+        const badge = card.querySelector('.card-badge');
+        if (badge && i < 10) badge.textContent = `#${i+1}`;
+        grid.appendChild(card);
+      });
+    } catch(e) {
+      grid.innerHTML = `<p style="color:var(--text-3);text-align:center;padding:40px;">Erro ao carregar 😕</p>`;
+    }
   }
 
   load();

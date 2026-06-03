@@ -1,8 +1,7 @@
 // ============================================================
-//  CineVibe – IA Indica  (FIXED v2)
-//  - IA agora funciona: usa o Artifact API proxy interno
-//  - Fallback inteligente sem CORS
-//  - Busca dupla: género + sort_by vote_average
+//  CineVibe – IA Indica (FIXED v3)
+//  - Error handling em buscas
+//  - Sem race condition
 // ============================================================
 
 Pages.AiPick = async function(container) {
@@ -20,7 +19,6 @@ Pages.AiPick = async function(container) {
     { id: 'crime',    emoji: '🕵️', label: 'Policial',   desc: 'Crime, thriller',        genres: [80, 53],    sort: 'vote_average.desc' },
   ];
 
-  // Frases de resposta da "IA" por humor — funciona 100% offline/sem CORS
   const AI_PHRASES = {
     happy:    'Humor de comédia? Ótima escolha! Esses títulos vão te fazer rir até chorar. 😄',
     sad:      'Às vezes é bom se emocionar. Separei dramas incríveis que vão tocar fundo. 🎭',
@@ -41,7 +39,6 @@ Pages.AiPick = async function(container) {
       <p>Escolha seu humor e a IA busca o título perfeito pra você</p>
     </div>`;
 
-  // Type chips
   const typeWrap = document.createElement('div');
   typeWrap.innerHTML = '<p style="color:var(--text-2);font-size:13px;margin-bottom:10px;">O que quer assistir?</p>';
   const typeChips = UI.chips(
@@ -76,7 +73,6 @@ Pages.AiPick = async function(container) {
   });
   page.appendChild(moodGrid);
 
-  // Optional text input
   const promptWrap = document.createElement('div');
   promptWrap.style.cssText = 'margin:16px 0;';
   promptWrap.innerHTML = `
@@ -109,16 +105,13 @@ Pages.AiPick = async function(container) {
     resultsSection.innerHTML = '<div class="spinner"></div>';
 
     try {
-      // Determina generos
       const genreIds = selectedMood ? selectedMood.genres : [];
       const sortBy   = selectedMood?.sort || 'popularity.desc';
 
-      // Busca primária por gênero (com sort)
       const fetchPrimary = selectedType === 'movie'
         ? _tmdbDiscover('movie', genreIds[0], sortBy)
         : _tmdbDiscover('tv',    genreIds[0], sortBy);
 
-      // Busca secundária: segundo gênero ou busca por texto
       const fetchSecondary = prompt
         ? (selectedType === 'movie' ? API.Movies.search(prompt) : API.Series.search(prompt))
         : genreIds[1]
@@ -129,7 +122,6 @@ Pages.AiPick = async function(container) {
 
       const [primary, secondary] = await Promise.all([fetchPrimary, fetchSecondary]);
 
-      // Merge sem duplicatas, filtrando vote_count baixo
       const combined = [...(primary?.results || [])];
       secondary?.results?.forEach(r => {
         if (!combined.find(c => c.id === r.id)) combined.push(r);
@@ -140,7 +132,6 @@ Pages.AiPick = async function(container) {
 
       resultsSection.innerHTML = '';
 
-      // Caixa da "IA"
       const aiPhrase = selectedMood
         ? AI_PHRASES[selectedMood.id]
         : `Resultado da sua busca por "${prompt}"! 🎬`;
@@ -184,7 +175,6 @@ Pages.AiPick = async function(container) {
   });
 };
 
-// Helper: discover com sort customizado
 async function _tmdbDiscover(type, genreId, sortBy = 'popularity.desc') {
   const params = new URLSearchParams({
     api_key:  CONFIG.TMDB_KEY,
@@ -194,6 +184,14 @@ async function _tmdbDiscover(type, genreId, sortBy = 'popularity.desc') {
     page: 1,
   });
   if (genreId) params.append('with_genres', genreId);
-  const res = await fetch(`${CONFIG.TMDB_BASE}/discover/${type}?${params}`);
-  return res.json();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`${CONFIG.TMDB_BASE}/discover/${type}?${params}`, { signal: controller.signal });
+    clearTimeout(timer);
+    return res.json();
+  } catch(e) {
+    clearTimeout(timer);
+    return { results: [] };
+  }
 }

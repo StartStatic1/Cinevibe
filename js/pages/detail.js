@@ -1,9 +1,8 @@
 // ============================================================
-//  CineVibe – Detail Modal  (FIXED v2)
-//  - backdrop com altura fixa, não vaza mais
-//  - chips de gênero em scroll horizontal
-//  - "Onde Assistir" sempre visível (mesmo sem flatrate)
-//  - seção de streaming sempre mostra via TMDB providers
+//  CineVibe – Detail Modal (FIXED v3)
+//  - Back button fecha modal
+//  - Botões não ficam escondidos (z-index)
+//  - Scroll lock robusto
 // ============================================================
 
 Pages = window.Pages || {};
@@ -15,6 +14,8 @@ Pages.Detail = (() => {
     content.innerHTML = '<div class="spinner" style="margin:60px auto;"></div>';
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    // Push state para back button
+    window.CineVibeBackBtn?.push('modal');
     _loadDetail(id, type, content);
   }
 
@@ -24,12 +25,14 @@ Pages.Detail = (() => {
     content.innerHTML = '<div class="spinner" style="margin:60px auto;"></div>';
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    window.CineVibeBackBtn?.push('modal');
     _loadPerson(id, content);
   }
 
   function close() {
     document.getElementById('modalOverlay').classList.add('hidden');
     document.body.style.overflow = '';
+    window.CineVibeBackBtn?.clear('modal');
   }
 
   async function _loadDetail(id, type, content) {
@@ -46,7 +49,6 @@ Pages.Detail = (() => {
         ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m`
         : data.episode_run_time?.[0] ? `${data.episode_run_time[0]}min/ep` : '';
 
-      // Prefer backdrop; fall back to poster
       const backdrop = API.img(data.backdrop_path, CONFIG.IMG.BACKDROP);
       const poster   = API.img(data.poster_path, CONFIG.IMG.POSTER_MD);
       const heroImg  = backdrop || poster;
@@ -65,7 +67,6 @@ Pages.Detail = (() => {
       const flatrate  = providers?.flatrate || [];
       const rent      = providers?.rent     || [];
       const buy       = providers?.buy      || [];
-      // Deduplicate all providers
       const allProviders = [];
       const seen = new Set();
       [...flatrate, ...rent, ...buy].forEach(p => {
@@ -167,7 +168,6 @@ Pages.Detail = (() => {
           } else {
             el.innerHTML = `<span>🎬</span> ${p.provider_name}`;
           }
-          // Show mode tag
           if (p.mode === 'rent') {
             const tag = document.createElement('span');
             tag.style.cssText = 'font-size:9px;color:var(--text-3);margin-left:4px;';
@@ -236,7 +236,6 @@ Pages.Detail = (() => {
             <div class="card-scroll" id="personFilmography"></div>` : ''}
         </div>`;
 
-      // Bio toggle
       const bioText   = content.querySelector('#bioText');
       const bioToggle = content.querySelector('#bioToggle');
       let expanded    = false;
@@ -245,7 +244,6 @@ Pages.Detail = (() => {
         bioText.style.maxHeight = expanded ? 'none' : '160px';
         bioToggle.textContent   = expanded ? 'Recolher ↑' : 'Ler mais ↓';
       });
-      // Hide toggle if text fits
       if (bioText && bioText.scrollHeight <= 160) bioToggle?.remove();
 
       const filmList = content.querySelector('#personFilmography');
@@ -261,6 +259,3 @@ Pages.Detail = (() => {
 
   return { open, openPerson, close };
 })();
-
-// ---- Patch: ensure btnPlay works ----
-// This is handled via DOMContentLoaded event binding below

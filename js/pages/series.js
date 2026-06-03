@@ -1,5 +1,5 @@
 // ============================================================
-//  CineVibe – Series Page
+//  CineVibe – Series Page (FIXED v2)
 // ============================================================
 
 Pages.Series = async function(container) {
@@ -9,8 +9,10 @@ Pages.Series = async function(container) {
   let activeGenre = null;
   let currentPage = 1;
 
-  const genresData = await API.Genres.series();
-  const genreList  = [{ id: null, name: 'Todas' }, ...(genresData.genres || [])];
+  let genresData;
+  try { genresData = await API.Genres.series(); }
+  catch(e) { genresData = { genres: [] }; }
+  const genreList = [{ id: null, name: 'Todas' }, ...(genresData.genres || [])];
 
   page.innerHTML = '';
   const header = document.createElement('div');
@@ -37,11 +39,16 @@ Pages.Series = async function(container) {
 
   async function loadSeries(append = false) {
     if (!append) grid.innerHTML = '';
-    const data = activeGenre
-      ? await API.Series.byGenre(activeGenre, currentPage)
-      : await API.Series.popular(currentPage);
-    data.results?.forEach(s => grid.appendChild(UI.movieCard(s, 'tv')));
-    loadMoreBtn.style.display = data.total_pages > currentPage ? 'block' : 'none';
+    try {
+      const data = activeGenre
+        ? await API.Series.byGenre(activeGenre, currentPage)
+        : await API.Series.popular(currentPage);
+      data.results?.forEach(s => grid.appendChild(UI.movieCard(s, 'tv')));
+      loadMoreBtn.style.display = data.total_pages > currentPage ? 'block' : 'none';
+    } catch(e) {
+      if (!append) grid.innerHTML = `<p style="color:var(--text-3);text-align:center;padding:40px;">Erro ao carregar séries 😕</p>`;
+      loadMoreBtn.style.display = 'none';
+    }
   }
 
   loadSeries();

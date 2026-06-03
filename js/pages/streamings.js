@@ -1,6 +1,6 @@
 // ============================================================
-//  CineVibe – Streamings Page  (v3 FIXED)
-//  Crunchyroll = anime JP real, outros por provider_id TMDB
+//  CineVibe – Streamings Page (FIXED v4)
+//  Crunchyroll = anime JP real (filtra original_language === 'ja')
 // ============================================================
 
 Pages.Streamings = async function(container) {
@@ -16,7 +16,6 @@ Pages.Streamings = async function(container) {
     { id: 531, name: 'Paramount+',   color: '#0064ff', emoji: '🔷' },
     { id: 619, name: 'Star+',        color: '#2D5F8A', emoji: '⭐' },
     { id: 2,   name: 'Apple TV+',    color: '#888',    emoji: '⬜' },
-    // Crunchyroll tratado separado
     { id: 'cr', name: 'Crunchyroll', color: '#ff6a00', emoji: '🟠', isAnime: true },
   ];
 
@@ -46,7 +45,6 @@ Pages.Streamings = async function(container) {
   contentArea.id = 'streamContent';
   page.appendChild(contentArea);
 
-  // Auto-seleciona Netflix
   platGrid.querySelector('.streaming-card').style.background   = PLATFORMS[0].color + '22';
   platGrid.querySelector('.streaming-card').style.borderColor  = PLATFORMS[0].color + '88';
   loadPlatform(PLATFORMS[0]);
@@ -57,16 +55,15 @@ Pages.Streamings = async function(container) {
       let movies, series;
 
       if (plat.isAnime) {
-        // Crunchyroll: anime japonês real
-        // Filmes: animação JP bem avaliados
+        // Crunchyroll: anime japonês REAL (filtra idioma original)
         const mRes = await fetch(`${CONFIG.TMDB_BASE}/discover/movie?api_key=${CONFIG.TMDB_KEY}&language=${CONFIG.LANG}&with_genres=16&with_origin_country=JP&sort_by=vote_average.desc&vote_count.gte=200&page=1`);
-        movies = await mRes.json();
+        const mData = await mRes.json();
+        movies = { results: (mData.results || []).filter(r => r.original_language === 'ja') };
 
-        // Séries: anime JP - excluindo americanos explicitamente
         const sRes = await fetch(`${CONFIG.TMDB_BASE}/discover/tv?api_key=${CONFIG.TMDB_KEY}&language=${CONFIG.LANG}&with_genres=16&with_origin_country=JP&sort_by=vote_average.desc&vote_count.gte=200&page=1`);
-        series = await sRes.json();
+        const sData = await sRes.json();
+        series = { results: (sData.results || []).filter(r => r.original_language === 'ja') };
       } else {
-        // Plataformas normais: filtrar por provider ID no Brasil
         const mRes = await fetch(`${CONFIG.TMDB_BASE}/discover/movie?api_key=${CONFIG.TMDB_KEY}&language=${CONFIG.LANG}&with_watch_providers=${plat.id}&watch_region=BR&sort_by=popularity.desc&vote_count.gte=30&page=1`);
         movies = await mRes.json();
         const sRes = await fetch(`${CONFIG.TMDB_BASE}/discover/tv?api_key=${CONFIG.TMDB_KEY}&language=${CONFIG.LANG}&with_watch_providers=${plat.id}&watch_region=BR&sort_by=popularity.desc&vote_count.gte=30&page=1`);
@@ -78,7 +75,6 @@ Pages.Streamings = async function(container) {
       const movieResults  = (movies?.results || []).slice(0, 14);
       const seriesResults = (series?.results || []).slice(0, 14);
 
-      // Filmes
       const s1 = document.createElement('div'); s1.className = 'section';
       s1.innerHTML = `<div class="section-header"><h2 class="section-title" style="color:${plat.color}">🎬 Filmes no ${plat.name}</h2></div>`;
       const scroll1 = document.createElement('div'); scroll1.className = 'card-scroll';
@@ -86,7 +82,6 @@ Pages.Streamings = async function(container) {
       else scroll1.innerHTML = `<p style="color:var(--text-3);padding:10px;">Nenhum resultado</p>`;
       s1.appendChild(scroll1); contentArea.appendChild(s1);
 
-      // Séries
       const s2 = document.createElement('div'); s2.className = 'section';
       s2.innerHTML = `<div class="section-header"><h2 class="section-title" style="color:${plat.color}">📺 Séries no ${plat.name}</h2></div>`;
       const scroll2 = document.createElement('div'); scroll2.className = 'card-scroll';

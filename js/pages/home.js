@@ -1,24 +1,31 @@
 // ============================================================
-//  CineVibe – Home Page  (v3 com Continuar Assistindo)
+//  CineVibe – Home Page (FIXED v4)
+//  - Play button sempre visível no mobile
+//  - Memory leak fix no listener cv:progress
+//  - Botão favorito sempre visível
 // ============================================================
 
 Pages = window.Pages || {};
+
+let _progressHandler = null;
 
 Pages.Home = async function(container) {
   container.innerHTML = `<div class="page fade-in" id="homePage"></div>`;
   const page = document.getElementById('homePage');
 
-  // Fetch em paralelo
+  // Remove listener antigo para evitar memory leak
+  if (_progressHandler) {
+    window.removeEventListener('cv:progress', _progressHandler);
+  }
+
   const [trending, popular, trendingSeries] = await Promise.all([
-    API.Movies.trending('week'),
-    API.Movies.popular(),
-    API.Series.trending('week'),
+    API.Movies.trending('week').catch(() => ({ results: [] })),
+    API.Movies.popular().catch(() => ({ results: [] })),
+    API.Series.trending('week').catch(() => ({ results: [] })),
   ]);
 
-  // ---- Continuar Assistindo ----
   _renderContinue(page);
 
-  // ---- Hero ----
   const hero = trending.results?.[0];
   if (hero) {
     const backdrop = API.img(hero.backdrop_path, CONFIG.IMG.BACKDROP);
@@ -52,25 +59,21 @@ Pages.Home = async function(container) {
     page.appendChild(heroEl);
   }
 
-  // ---- Trending Filmes ----
   const s1 = UI.section('Filmes em', 'Alta', 'movies');
   const scroll1 = document.createElement('div'); scroll1.className = 'card-scroll';
   trending.results?.slice(0,14).forEach(m => scroll1.appendChild(_movieCardWithPlay(m,'movie')));
   s1.appendChild(scroll1); page.appendChild(s1);
 
-  // ---- Trending Séries ----
   const s2 = UI.section('Séries em', 'Destaque', 'series');
   const scroll2 = document.createElement('div'); scroll2.className = 'card-scroll';
   trendingSeries.results?.slice(0,14).forEach(s => scroll2.appendChild(_movieCardWithPlay(s,'tv')));
   s2.appendChild(scroll2); page.appendChild(s2);
 
-  // ---- Populares (wide) ----
   const s3 = UI.section('Populares da', 'Semana');
   const scroll3 = document.createElement('div'); scroll3.className = 'card-scroll';
   popular.results?.slice(0,10).forEach(m => scroll3.appendChild(UI.wideCard(m,'movie')));
   s3.appendChild(scroll3); page.appendChild(s3);
 
-  // ---- AI teaser ----
   const aiTeaser = document.createElement('div');
   aiTeaser.className = 'ai-hero';
   aiTeaser.innerHTML = `
@@ -80,13 +83,13 @@ Pages.Home = async function(container) {
   aiTeaser.querySelector('#goAI').onclick = () => Router.navigate('aiPick');
   page.appendChild(aiTeaser);
 
-  // Atualiza "continuar" quando player emite evento
-  window.addEventListener('cv:progress', () => _renderContinue(page));
+  // Novo handler guardado para poder remover depois
+  _progressHandler = () => _renderContinue(page);
+  window.addEventListener('cv:progress', _progressHandler);
 };
 
 function _renderContinue(page) {
   const items = Player.getContinueWatching();
-  // Remove seção anterior
   page.querySelector('#continueSection')?.remove();
   if (!items.length) return;
 
@@ -121,7 +124,6 @@ function _renderContinue(page) {
   });
 
   sec.appendChild(scroll);
-  // Insere no topo da página, antes do hero
   page.insertBefore(sec, page.firstChild);
 }
 
@@ -133,20 +135,16 @@ function _playMovie(item) {
 
 function _movieCardWithPlay(item, type) {
   const card = UI.movieCard(item, type);
-  // Adiciona botão play no poster
+  // Botão play sempre visível (mobile-first)
   const poster  = card.querySelector('.card-poster');
-  const playBtn = document.createElement('div');
-  playBtn.style.cssText = `
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    background:rgba(0,0,0,0.4);opacity:0;transition:opacity 0.2s;
-    font-size:26px;cursor:pointer;`;
-  playBtn.textContent = '▶';
+  const playBtn = document.createElement('button');
+  playBtn.className = 'card-play-btn';
+  playBtn.setAttribute('aria-label', 'Assistir');
+  playBtn.innerHTML = '▶';
   playBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     Player.open(item.id, type, item.title || item.name, item.backdrop_path, item.overview);
   });
   poster.appendChild(playBtn);
-  card.addEventListener('mouseenter', () => playBtn.style.opacity = '1');
-  card.addEventListener('mouseleave', () => playBtn.style.opacity = '0');
   return card;
 }

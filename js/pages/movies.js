@@ -1,25 +1,24 @@
 // ============================================================
-//  CineVibe – Movies Page
+//  CineVibe – Movies Page (FIXED v2)
+//  - Error handling em requisições
 // ============================================================
 
 Pages.Movies = async function(container) {
   container.innerHTML = `<div class="page fade-in" id="moviesPage"></div>`;
   const page = document.getElementById('moviesPage');
 
-  // Genre filter state
   let activeGenre = null;
   let currentPage = 1;
 
-  // Load genres
-  const genresData = await API.Genres.movies();
-  const genreList  = [{ id: null, name: 'Todos' }, ...(genresData.genres || [])];
+  let genresData;
+  try { genresData = await API.Genres.movies(); }
+  catch(e) { genresData = { genres: [] }; }
+  const genreList = [{ id: null, name: 'Todos' }, ...(genresData.genres || [])];
 
-  // Header
   const header = document.createElement('div');
   header.innerHTML = `<h1 class="section-title" style="margin-bottom:16px">🎬 <span class="accent">Filmes</span></h1>`;
   page.appendChild(header);
 
-  // Genre chips
   const chipsEl = UI.chips(genreList, null, (genre) => {
     activeGenre = genre.id;
     currentPage = 1;
@@ -27,12 +26,10 @@ Pages.Movies = async function(container) {
   });
   page.appendChild(chipsEl);
 
-  // Cards container
   const grid = document.createElement('div');
   grid.className = 'card-grid';
   page.appendChild(grid);
 
-  // Load more
   const loadMoreBtn = document.createElement('button');
   loadMoreBtn.className = 'btn btn-secondary';
   loadMoreBtn.style.cssText = 'width:100%;margin-top:20px;';
@@ -50,13 +47,18 @@ Pages.Movies = async function(container) {
         grid.appendChild(sk);
       }
     }
-    const data = activeGenre
-      ? await API.Movies.byGenre(activeGenre, currentPage)
-      : await API.Movies.popular(currentPage);
+    try {
+      const data = activeGenre
+        ? await API.Movies.byGenre(activeGenre, currentPage)
+        : await API.Movies.popular(currentPage);
 
-    if (!append) grid.innerHTML = '';
-    data.results?.forEach(m => grid.appendChild(UI.movieCard(m, 'movie')));
-    loadMoreBtn.style.display = data.total_pages > currentPage ? 'block' : 'none';
+      if (!append) grid.innerHTML = '';
+      data.results?.forEach(m => grid.appendChild(UI.movieCard(m, 'movie')));
+      loadMoreBtn.style.display = data.total_pages > currentPage ? 'block' : 'none';
+    } catch(e) {
+      if (!append) grid.innerHTML = `<p style="color:var(--text-3);text-align:center;padding:40px;">Erro ao carregar filmes 😕</p>`;
+      loadMoreBtn.style.display = 'none';
+    }
   }
 
   loadMovies();
