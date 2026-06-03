@@ -1,0 +1,46 @@
+{
+  "name": "CineVibe – Descubra o que assistir",
+  "short_name": "CineVibe",
+  "description": "Descubra filmes e séries com inteligência artificial. Saiba onde assistir em todos os streamings.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080810",
+  "theme_color": "#00e5c8",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "categories": ["entertainment", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/screenshot.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "IA Indica",
+      "url": "/#aiPick",
+      "description": "Deixa a IA escolher pra você"
+    },
+    {
+      "name": "Em Alta",
+      "url": "/#trending",
+      "description": "O que está bombando agora"
+    }
+  ]
+}

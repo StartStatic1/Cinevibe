@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" content="CineVibe – Descubra o que assistir com IA. Filmes, séries e streamings num só lugar." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CineVibe" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="CineVibe" />
+  <meta property="og:description" content="Descubra o que assistir com IA" />
+  <meta property="og:type" content="website" />
+
+  <title>CineVibe</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/reset.css" />
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/animations.css" />
+</head>
+<body>
+
+  <!-- Splash / Loading -->
+  <div id="splash" class="splash">
+    <div class="splash-logo">
+      <span class="splash-icon">🎬</span>
+      <h1>CineVibe</h1>
+      <p>Carregando o universo...</p>
+    </div>
+    <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app" class="app hidden">
+
+    <!-- Top Bar -->
+    <header class="topbar" id="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <a href="#" class="logo" data-page="home">Cine<span>Vibe</span></a>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" id="searchToggle" aria-label="Buscar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </button>
+        <button class="icon-btn" id="favBtn" aria-label="Favoritos" data-page="favorites">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Search Overlay -->
+    <div class="search-overlay hidden" id="searchOverlay">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Buscar filmes, séries, atores..." autocomplete="off" />
+        <button class="search-close" id="searchClose">✕</button>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <!-- Sidebar Nav -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <ul class="nav-list">
+          <li><a href="#" data-page="home" class="nav-link active">🏠 Início</a></li>
+          <li><a href="#" data-page="movies" class="nav-link">🎬 Filmes</a></li>
+          <li><a href="#" data-page="series" class="nav-link">📺 Séries</a></li>
+          <li><a href="#" data-page="trending" class="nav-link">🔥 Em Alta</a></li>
+          <li><a href="#" data-page="aiPick" class="nav-link">🤖 IA Indica</a></li>
+          <li><a href="#" data-page="streamings" class="nav-link">📡 Streamings</a></li>
+          <li><a href="#" data-page="favorites" class="nav-link">❤️ Favoritos</a></li>
+          <li><a href="#" data-page="watchlist" class="nav-link">📌 Quero Ver</a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <p>CineVibe v1.0</p>
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-overlay hidden" id="sidebarOverlay"></div>
+
+    <!-- Page Container -->
+    <main class="page-container" id="pageContainer">
+      <!-- Pages are injected here by JS -->
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+      <button class="bnav-btn active" data-page="home">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span>Início</span>
+      </button>
+      <button class="bnav-btn" data-page="trending">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        <span>Em Alta</span>
+      </button>
+      <button class="bnav-btn bnav-ai" data-page="aiPick">
+        <div class="ai-orb">🤖</div>
+        <span>IA Indica</span>
+      </button>
+      <button class="bnav-btn" data-page="favorites">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span>Favoritos</span>
+      </button>
+      <button class="bnav-btn" data-page="watchlist">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <span>Quero Ver</span>
+      </button>
+    </nav>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay hidden" id="modalOverlay">
+      <div class="modal" id="detailModal">
+        <button class="modal-close" id="modalClose">✕</button>
+        <div class="modal-content" id="modalContent"></div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+  </div><!-- /app -->
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/store.js"></script>
+  <script src="/js/router.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/pages/home.js"></script>
+  <script src="/js/pages/movies.js"></script>
+  <script src="/js/pages/series.js"></script>
+  <script src="/js/pages/trending.js"></script>
+  <script src="/js/pages/aiPick.js"></script>
+  <script src="/js/pages/streamings.js"></script>
+  <script src="/js/pages/favorites.js"></script>
+  <script src="/js/pages/watchlist.js"></script>
+  <script src="/js/pages/detail.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/sw-register.js"></script>
+
+</body>
+</html>
