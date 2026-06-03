@@ -138,8 +138,9 @@ Pages.Detail = (() => {
       // ---- Play ----
       content.querySelector('#btnPlay')?.addEventListener('click', () => {
         Pages.Detail.close();
-        Player.open(data.id, type, data.title || data.name, data.backdrop_path, data.overview);
-      });
+        AdWall.guard(() => {
+  Player.open(data.id, type, data.title, data.backdrop_path, data.overview);
+});
 
       // ---- Fav ----
       content.querySelector('#btnFav')?.addEventListener('click', (e) => {
