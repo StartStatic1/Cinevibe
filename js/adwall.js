@@ -27,31 +27,14 @@ const AdWall = (() => {
     return ADS[Math.floor(Math.random() * ADS.length)];
   }
 
-  // ── Teste real: tenta abrir about:blank ──
-  // No navegador normal: retorna objeto válido
-  // No APK deles (shouldOverrideUrlLoading): retorna null
-  function popupAllowed() {
-    try {
-      const test = window.open('about:blank', '_blank');
-      if (!test || test.closed || typeof test.closed === 'undefined') return false;
-      test.close();
-      return true;
-    } catch(e) {
-      return false;
-    }
-  }
-
+  let userLeftApp = false;   // usuário realmente saiu para ver o anúncio
   let clickTimestamp = null;
-  let adConfirmed    = false;
+  let countdownInterval = null;
 
   function show(onUnlock) {
     document.getElementById('adwallOverlay')?.remove();
-
-    // ── Pré-teste: já de cara testa se popup funciona ──
-    if (!popupAllowed()) {
-      showPirateBlock();
-      return;
-    }
+    userLeftApp    = false;
+    clickTimestamp = null;
 
     const overlay = document.createElement('div');
     overlay.id = 'adwallOverlay';
@@ -112,51 +95,83 @@ const AdWall = (() => {
     const btnText = document.getElementById('adwallBtnText');
     const timer   = document.getElementById('adwallTimer');
     let clicked   = false;
-    adConfirmed   = false;
+
+    // ── Detecta se usuário saiu do app (foi ver o anúncio) ──
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        // App foi para background — usuário saiu
+        userLeftApp = true;
+        document.getElementById('step2')?.classList.add('done');
+      }
+      if (document.visibilityState === 'visible' && userLeftApp) {
+        // Voltou ao app
+        document.getElementById('step3')?.classList.add('done');
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     btn.addEventListener('click', () => {
       if (clicked) return;
 
-      // Abre anúncio real
+      // Abre o anúncio
       const newTab = window.open(randomAd(), '_blank');
 
+      // Popup bloqueado completamente
       if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
-        // Popup bloqueado — mostra bloqueio e não inicia contador
-        showPirateBlock();
+        btnText.innerHTML = '🚫 Bloqueado. Tente no navegador.';
+        btn.style.cssText = 'background:rgba(255,60,60,0.15);border:1px solid rgba(255,60,60,0.4);color:#ff6060;';
+        setTimeout(() => {
+          btn.style.cssText = '';
+          btnText.textContent = '▶ Liberar Acesso Grátis';
+        }, 3000);
         return;
       }
 
-      adConfirmed    = true;
       clicked        = true;
       clickTimestamp = Date.now();
 
       document.getElementById('step1').classList.add('done');
-      setTimeout(() => document.getElementById('step2')?.classList.add('done'), 800);
-      setTimeout(() => document.getElementById('step3')?.classList.add('done'), 2000);
-
       btn.classList.add('adwall-btn-counting');
       btnText.textContent = '⏳ Aguardando...';
       timer.classList.remove('hidden');
 
-      // Contador
+      // Contador — PAUSADO até usuário sair do app
       let secs   = 5;
+      let paused = true; // começa pausado
       const circle = document.getElementById('timerCircle');
       const numEl  = document.getElementById('timerNum');
       const total  = 113;
 
-      const tick = setInterval(() => {
+      // Só inicia o contador quando usuário voltar ao app
+      // (prova que ele saiu e viu o anúncio)
+      function onReturn() {
+        if (document.visibilityState === 'visible' && userLeftApp && paused) {
+          paused = false; // despausa o contador
+          document.removeEventListener('visibilitychange', onReturn);
+        }
+      }
+      document.addEventListener('visibilitychange', onReturn);
+
+      countdownInterval = setInterval(() => {
+        if (paused) return; // espera usuário voltar
+
         secs--;
-        if (numEl)   numEl.textContent = secs;
-        if (circle)  circle.style.strokeDashoffset = total - (total * ((5 - secs) / 5));
+        if (numEl)  numEl.textContent = secs;
+        if (circle) circle.style.strokeDashoffset = total - (total * ((5 - secs) / 5));
 
         if (secs <= 0) {
-          clearInterval(tick);
+          clearInterval(countdownInterval);
+
+          // Validações finais
           const elapsed = Date.now() - (clickTimestamp || 0);
-          // Só libera se anúncio abriu E tempo real passou
-          if (!adConfirmed || elapsed < 4000) {
+          if (!userLeftApp || elapsed < 3000) {
+            // Não saiu do app — reinicia
             resetBtn(btn, btnText, timer);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
             return;
           }
+
+          document.removeEventListener('visibilitychange', onVisibilityChange);
           setUnlocked();
           unlock(onUnlock);
         }
@@ -164,41 +179,13 @@ const AdWall = (() => {
     });
   }
 
-  function showPirateBlock() {
-    document.getElementById('adwallOverlay')?.remove();
-    const overlay = document.createElement('div');
-    overlay.id = 'adwallOverlay';
-    overlay.innerHTML = `
-      <div class="adwall-backdrop"></div>
-      <div class="adwall-card" style="text-align:center;">
-        <div class="adwall-icon">⚠️</div>
-        <h2 class="adwall-title" style="font-size:22px;">Acesso bloqueado</h2>
-        <p class="adwall-sub" style="margin-bottom:28px;">
-          Este app não tem permissão para<br>
-          exibir o conteúdo do <strong style="color:#00e5c8;">CineVibe</strong>.<br><br>
-          Acesse pelo navegador para assistir grátis.
-        </p>
-        <a href="https://cinevibe-omega.vercel.app"
-           target="_blank" rel="noopener"
-           class="adwall-btn"
-           style="display:block;text-decoration:none;padding:16px;">
-          🌐 Abrir no navegador
-        </a>
-        <p class="adwall-note" style="margin-top:16px;">
-          cinevibe-omega.vercel.app
-        </p>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add('adwall-show'));
-  }
-
   function resetBtn(btn, btnText, timer) {
-    if (btn)    { btn.classList.remove('adwall-btn-counting'); }
-    if (btnText)  btnText.textContent = '▶ Liberar Acesso Grátis';
-    if (timer)    timer.classList.add('hidden');
-    adConfirmed    = false;
+    if (btn)    btn.classList.remove('adwall-btn-counting');
+    if (btnText) btnText.textContent = '▶ Liberar Acesso Grátis';
+    if (timer)   timer.classList.add('hidden');
+    userLeftApp    = false;
     clickTimestamp = null;
+    if (countdownInterval) clearInterval(countdownInterval);
   }
 
   function unlock(onUnlock) {
