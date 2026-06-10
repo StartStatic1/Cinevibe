@@ -9,11 +9,11 @@ const Player = (() => {
 
   const SERVERS = [
     {
-      // RedeCanais — servidor principal (substitui SuperFlix que bloqueou com.cinevibe.app)
-      key: 'redecanais',
-      label: 'RedeCanais',
-      movie: (id) => `https://redecanais.nexus/player3/server.php?server=RCFServer2&subfolder=ondemand&vid=${id}`,
-      tv:    (id, s, e) => `https://redecanais.nexus/player3/server.php?server=RCFServer2&subfolder=ondemand&vid=${id}&season=${s}&episode=${e}`,
+      // SuperFlix — funciona no browser. Se bloqueou no TWA, troque pelo EmbedMovies
+      key: 'superflix',
+      label: 'SuperFlix',
+      movie: (id) => `https://superflixapi.fit/filme/${id}`,
+      tv:    (id, s, e) => `https://superflixapi.fit/serie/${id}/${s}/${e}`,
     },
     {
       key: 'embedmovies',
@@ -38,7 +38,7 @@ const Player = (() => {
   let _state = {
     id: null, type: null, title: null,
     season: 1, episode: 1,
-    server: 'redecanais',
+    server: 'superflix',
     seasons: [],
     overview: '',
     backdrop: null,
@@ -55,7 +55,7 @@ const Player = (() => {
     const saved = _loadProgress(tmdbId, type);
     _state.season  = saved?.season  || 1;
     _state.episode = saved?.episode || 1;
-    _state.server  = saved?.server  || 'redecanais';
+    _state.server  = saved?.server  || 'superflix';
 
     if (type === 'tv') {
       _state.seasons = [];
