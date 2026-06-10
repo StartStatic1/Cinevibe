@@ -101,24 +101,42 @@ function _renderContinue(page) {
     const card = document.createElement('div');
     card.className = 'continue-card';
     const thumb = item.backdrop
-      ? `<img src="${API.img(item.backdrop, CONFIG.IMG.BACKDROP)}" alt="${item.title}" loading="lazy" />`
+      ? `<img src="${API.img(item.backdrop, CONFIG.IMG.BACKDROP)}" alt="${item.title || ''}" loading="lazy" />`
       : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--surface)">🎬</div>`;
     const sub = item.type === 'tv'
       ? `T${item.season} E${item.episode}`
       : 'Filme';
+    const displayTitle = item.title && item.title !== 'undefined' ? item.title : 'Sem título';
 
     card.innerHTML = `
       <div class="continue-thumb">
         ${thumb}
         <div class="continue-progress"><div class="continue-progress-fill" style="width:30%"></div></div>
         <div class="continue-play-icon">▶</div>
+        <button class="continue-remove-btn" title="Remover">✕</button>
       </div>
       <div class="continue-info">
-        <div class="continue-title">${item.title}</div>
+        <div class="continue-title">${displayTitle}</div>
         <div class="continue-sub">${sub}</div>
       </div>`;
+
+    card.querySelector('.continue-play-icon').addEventListener('click', (e) => {
+      e.stopPropagation();
+      Player.open(item.id, item.type, displayTitle, item.backdrop, '');
+    });
+
+    card.querySelector('.continue-remove-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      try { localStorage.removeItem(`cv_progress_${item.type}_${item.id}`); } catch {}
+      card.remove();
+      // Se não restar cards, remove a seção inteira
+      if (!scroll.querySelector('.continue-card')) {
+        sec.remove();
+      }
+    });
+
     card.addEventListener('click', () => {
-      Player.open(item.id, item.type, item.title, item.backdrop, '');
+      Player.open(item.id, item.type, displayTitle, item.backdrop, '');
     });
     scroll.appendChild(card);
   });
