@@ -9,10 +9,11 @@ const Player = (() => {
 
   const SERVERS = [
     {
-      key: 'superflix',
-      label: 'SuperFlix',
-      movie: (id) => `https://superflixapi.fit/filme/${id}`,
-      tv:    (id, s, e) => `https://superflixapi.fit/serie/${id}/${s}/${e}`,
+      // RedeCanais — servidor principal (substitui SuperFlix que bloqueou com.cinevibe.app)
+      key: 'redecanais',
+      label: 'RedeCanais',
+      movie: (id) => `https://redecanais.nexus/player3/server.php?server=RCFServer2&subfolder=ondemand&vid=${id}`,
+      tv:    (id, s, e) => `https://redecanais.nexus/player3/server.php?server=RCFServer2&subfolder=ondemand&vid=${id}&season=${s}&episode=${e}`,
     },
     {
       key: 'embedmovies',
@@ -27,12 +28,6 @@ const Player = (() => {
       tv:    (id, s, e) => `https://betterflix.click/api/player?id=${id}&type=tv&season=${s}&episode=${e}`,
     },
     {
-      key: 'megaembed',
-      label: 'MegaEmbed',
-      movie: (id) => `https://megaembedapi.site/embed/${id}`,
-      tv:    (id, s, e) => `https://megaembedapi.site/embed/${id}/${s}/${e}`,
-    },
-    {
       key: 'embedplay',
       label: 'EmbedPlay',
       movie: (id) => `https://embedplayapi.top/embed/${id}`,
@@ -43,7 +38,7 @@ const Player = (() => {
   let _state = {
     id: null, type: null, title: null,
     season: 1, episode: 1,
-    server: 'superflix',
+    server: 'redecanais',
     seasons: [],
     overview: '',
     backdrop: null,
@@ -53,14 +48,14 @@ const Player = (() => {
   async function open(tmdbId, type, title, backdrop, overview) {
     _state.id       = tmdbId;
     _state.type     = type;
-    _state.title    = title;
+    _state.title    = title || 'Sem título';   // garante nunca undefined
     _state.backdrop = backdrop;
     _state.overview = overview || '';
 
     const saved = _loadProgress(tmdbId, type);
     _state.season  = saved?.season  || 1;
     _state.episode = saved?.episode || 1;
-    _state.server  = saved?.server  || 'superflix';
+    _state.server  = saved?.server  || 'redecanais';
 
     if (type === 'tv') {
       _state.seasons = [];
@@ -236,7 +231,8 @@ const Player = (() => {
   function _saveProgress() {
     const key  = `cv_progress_${_state.type}_${_state.id}`;
     const data = {
-      id: _state.id, type: _state.type, title: _state.title,
+      id: _state.id, type: _state.type,
+      title: _state.title || 'Sem título',   // nunca salva undefined
       season: _state.season, episode: _state.episode,
       server: _state.server, backdrop: _state.backdrop,
       updatedAt: Date.now(),
