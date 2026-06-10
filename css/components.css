@@ -431,6 +431,24 @@
 .continue-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .continue-sub { font-size: 10px; color: var(--text-3); margin-top: 1px; }
 
+/* Botão remover do continuar assistindo */
+.continue-remove-btn {
+  position: absolute; top: 5px; right: 5px;
+  width: 22px; height: 22px;
+  background: rgba(0,0,0,0.75);
+  border: none; border-radius: 50%;
+  color: #fff; font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 4;
+  opacity: 0; transition: opacity 0.2s;
+}
+.continue-card:hover .continue-remove-btn,
+.continue-card:focus-within .continue-remove-btn { opacity: 1; }
+/* Mobile: sempre visível */
+@media (hover: none) {
+  .continue-remove-btn { opacity: 0.85; }
+}
+
 /* Touch devices: show continue play icon always at 0.6 opacity */
 @media (hover: none) and (pointer: coarse) {
   .continue-play-icon { opacity: 0.6; }
